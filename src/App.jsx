@@ -46,7 +46,7 @@ export default function MindfulApp() {
     const data = [];
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
-    // اگر هیچ داده‌ای وجود ندارد
+    // اگر هیچ داده‌ای وجود ندارد، همه را بدون داده برگردان
     if (!history.moods || history.moods.length === 0) {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
@@ -59,15 +59,13 @@ export default function MindfulApp() {
           hasData: false
         });
       }
-      // همه را ۵ بگذار
-      return data.map(d => ({ ...d, score: 5 }));
+      return data; // ✅ بدون مقدار ۵
     }
 
     // ایجاد مپ از تاریخ‌های ثبت شده
     const moodMap = {};
     history.moods.forEach(mood => {
       const dateStr = toDateStr(mood.created_at);
-      // اگر چند ثبت در یک روز داریم، آخرین را نگه می‌داریم
       moodMap[dateStr] = mood.score;
     });
 
@@ -90,23 +88,7 @@ export default function MindfulApp() {
       });
     }
 
-    // پر کردن مقادیر null
-    const hasAnyData = data.some(d => d.hasData);
-    
-    if (!hasAnyData) {
-      return data.map(d => ({ ...d, score: 5 }));
-    }
-
-    // محاسبه میانگین برای روزهای بدون داده
-    const validScores = data.filter(d => d.hasData).map(d => d.score);
-    const avgScore = validScores.length > 0 
-      ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) 
-      : 5;
-
-    return data.map(d => ({
-      ...d,
-      score: d.hasData ? d.score : avgScore
-    }));
+    return data; // ✅ بدون پر کردن مقادیر null
   };
 
   if (loading) {
