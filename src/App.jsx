@@ -53,6 +53,11 @@ export default function MindfulApp() {
   // === State: Navigation ===
   const [activeTab, setActiveTab] = useState('today');
 
+  // === State: Today's Data (برای نمایش داده‌های امروز) ===
+  const [todayMood, setTodayMood] = useState(null);
+  const [todayNewsId, setTodayNewsId] = useState(null);
+  const [todayGratitudeId, setTodayGratitudeId] = useState(null);
+
   // === State: Dynamic Data & History ===
   const [chartData, setChartData] = useState([]);
   const [historyLogs, setHistoryLogs] = useState({ moods: [], gratitudes: [] });
@@ -123,17 +128,108 @@ export default function MindfulApp() {
     wishes: { fulfilled: 0, pending: 0 }
   });
 
-  // === Load data from Supabase ===
-  useEffect(() => {
-    loadAllData();
-  }, []);
+  // === Helper: Get today's date range ===
+  const getTodayRange = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return {
+      start: `${today}T00:00:00`,
+      end: `${today}T23:59:59`
+    };
+  };
 
+  // === Load Today's Data from Supabase ===
+  const loadTodayData = async () => {
+    try {
+      const { start, end } = getTodayRange();
+      
+      // 1. گرفتن احساس امروز
+      const { data: moodToday } = await supabase
+        .from('mood_logs')
+        .select('*')
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (moodToday && moodToday.length > 0) {
+        setTodayMood(moodToday[0]);
+        setSelectedEmotion({
+          id: moodToday[0].emotion_id,
+          label: moodToday[0].emotion_label,
+          score: moodToday[0].score
+        });
+        setSelectedQuadrant(moodToday[0].quadrant);
+      } else {
+        setTodayMood(null);
+      }
+
+      // 2. گرفتن اخبار امروز
+      const { data: newsToday } = await supabase
+        .from('daily_events')
+        .select('*')
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (newsToday && newsToday.length > 0) {
+        setTodayNewsId(newsToday[0].id);
+        setNews({
+          good: newsToday[0].good_news || '',
+          bad: newsToday[0].bad_news || ''
+        });
+      } else {
+        setTodayNewsId(null);
+        setNews({ good: '', bad: '' });
+      }
+
+      // 3. گرفتن شکرگزاری امروز
+      const { data: gratitudeToday } = await supabase
+        .from('gratitude_logs')
+        .select('*')
+        .gte('created_at', start)
+        .lte('created_at', end)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (gratitudeToday && gratitudeToday.length > 0) {
+        setTodayGratitudeId(gratitudeToday[0].id);
+        setGratitudeText(gratitudeToday[0].content);
+        setSelectedGratitudeCat(gratitudeToday[0].category_name);
+      } else {
+        setTodayGratitudeId(null);
+        setGratitudeText('');
+      }
+
+    } catch (error) {
+      console.error('Error loading today data:', error);
+    }
+  };
+
+  // === Load All Data from Supabase ===
   const loadAllData = async () => {
     try {
-      const { data: moodData } = await supabase.from('mood_logs').select('*').order('created_at', { ascending: false }).limit(30);
-      const { data: gratitudeData } = await supabase.from('gratitude_logs').select('*').order('created_at', { ascending: false }).limit(15);
-      const { data: wishesData } = await supabase.from('wishes').select('*').order('created_at', { ascending: false });
-      const { data: meditationData } = await supabase.from('meditation_logs').select('*').order('created_at', { ascending: false });
+      const { data: moodData } = await supabase
+        .from('mood_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      
+      const { data: gratitudeData } = await supabase
+        .from('gratitude_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(15);
+      
+      const { data: wishesData } = await supabase
+        .from('wishes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      const { data: meditationData } = await supabase
+        .from('meditation_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (moodData) {
         setHistoryLogs(prev => ({ ...prev, moods: moodData }));
@@ -229,7 +325,13 @@ export default function MindfulApp() {
     }
   };
 
-  // === Handlers ===
+  // === Load data on mount ===
+  useEffect(() => {
+    loadAllData();
+    loadTodayData();
+  }, []);
+
+  // === Meditation Timer ===
   useEffect(() => {
     if (meditationState.isActive) {
       timerRef.current = setInterval(() => {
@@ -241,7 +343,9 @@ export default function MindfulApp() {
     return () => clearInterval(timerRef.current);
   }, [meditationState.isActive]);
 
+  // === Handlers ===
   const startMeditation = () => setMeditationState({ isActive: true, seconds: 0, isFinished: false });
+  
   const stopMeditation = () => {
     clearInterval(timerRef.current);
     setMeditationState(prev => ({ ...prev, isActive: false, isFinished: true }));
@@ -286,7 +390,10 @@ export default function MindfulApp() {
   const handleAddWish = async () => {
     if (newWishText.trim() !== '') {
       try {
-        const { data, error } = await supabase.from('wishes').insert({ content: newWishText.trim() }).select();
+        const { data, error } = await supabase
+          .from('wishes')
+          .insert({ content: newWishText.trim() })
+          .select();
         if (error) throw error;
         setWishes([{ id: data[0].id, content: newWishText.trim(), is_fulfilled: false, created_at: new Date().toISOString() }, ...wishes]);
         setNewWishText('');
@@ -302,7 +409,13 @@ export default function MindfulApp() {
       const wish = wishes.find(w => w.id === id);
       if (!wish) return;
       const newStatus = !wish.is_fulfilled;
-      const { error } = await supabase.from('wishes').update({ is_fulfilled: newStatus, fulfilled_at: newStatus ? new Date().toISOString() : null }).eq('id', id);
+      const { error } = await supabase
+        .from('wishes')
+        .update({ 
+          is_fulfilled: newStatus, 
+          fulfilled_at: newStatus ? new Date().toISOString() : null 
+        })
+        .eq('id', id);
       if (error) throw error;
       setWishes(wishes.map(w => w.id === id ? { ...w, is_fulfilled: newStatus } : w));
       loadAllData();
@@ -311,53 +424,108 @@ export default function MindfulApp() {
     }
   };
 
+  // === Save Mood (با قابلیت به‌روزرسانی امروز) ===
   const saveMood = async () => {
     if (!selectedEmotion || !selectedQuadrant) return;
     try {
-      await supabase.from('mood_logs').insert({
-        emotion_id: selectedEmotion.id,
-        emotion_label: selectedEmotion.label,
-        quadrant: selectedQuadrant,
-        score: selectedEmotion.score
-      });
+      if (todayMood) {
+        // به‌روزرسانی احساس امروز
+        const { error } = await supabase
+          .from('mood_logs')
+          .update({
+            emotion_id: selectedEmotion.id,
+            emotion_label: selectedEmotion.label,
+            quadrant: selectedQuadrant,
+            score: selectedEmotion.score
+          })
+          .eq('id', todayMood.id);
+        if (error) throw error;
+      } else {
+        // درج احساس جدید
+        await supabase.from('mood_logs').insert({
+          emotion_id: selectedEmotion.id,
+          emotion_label: selectedEmotion.label,
+          quadrant: selectedQuadrant,
+          score: selectedEmotion.score
+        });
+      }
       setMoodSaved(true);
       setTimeout(() => setMoodSaved(false), 3000);
       loadAllData();
+      loadTodayData();
     } catch (error) {
       console.error('Error saving mood:', error);
     }
   };
 
-  const saveGratitude = async () => {
-    if (gratitudeText.trim() === '') return;
-    try {
-      await supabase.from('gratitude_logs').insert({ category_name: selectedGratitudeCat, content: gratitudeText.trim() });
-      setIsGratitudeSaved(true);
-      setTimeout(() => setIsGratitudeSaved(false), 3000);
-      setGratitudeText('');
-      loadAllData();
-    } catch (error) {
-      console.error('Error saving gratitude:', error);
-    }
-  };
-
+  // === Save News (با قابلیت به‌روزرسانی امروز) ===
   const saveNews = async () => {
     if (news.good.trim() === '' && news.bad.trim() === '') return;
     try {
-      await supabase.from('daily_events').insert({ good_news: news.good.trim() || null, bad_news: news.bad.trim() || null });
+      if (todayNewsId) {
+        // به‌روزرسانی اخبار امروز
+        const { error } = await supabase
+          .from('daily_events')
+          .update({
+            good_news: news.good.trim() || null,
+            bad_news: news.bad.trim() || null
+          })
+          .eq('id', todayNewsId);
+        if (error) throw error;
+      } else {
+        // درج اخبار جدید
+        await supabase.from('daily_events').insert({
+          good_news: news.good.trim() || null,
+          bad_news: news.bad.trim() || null
+        });
+      }
       setNewsSaved(true);
       setTimeout(() => setNewsSaved(false), 3000);
-      setNews({ good: '', bad: '' });
       loadAllData();
+      loadTodayData();
     } catch (error) {
       console.error('Error saving news:', error);
     }
   };
 
+  // === Save Gratitude (با قابلیت به‌روزرسانی امروز) ===
+  const saveGratitude = async () => {
+    if (gratitudeText.trim() === '') return;
+    try {
+      if (todayGratitudeId) {
+        // به‌روزرسانی شکرگزاری امروز
+        const { error } = await supabase
+          .from('gratitude_logs')
+          .update({
+            category_name: selectedGratitudeCat,
+            content: gratitudeText.trim()
+          })
+          .eq('id', todayGratitudeId);
+        if (error) throw error;
+      } else {
+        // درج شکرگزاری جدید
+        await supabase.from('gratitude_logs').insert({
+          category_name: selectedGratitudeCat,
+          content: gratitudeText.trim()
+        });
+      }
+      setIsGratitudeSaved(true);
+      setTimeout(() => setIsGratitudeSaved(false), 3000);
+      loadAllData();
+      loadTodayData();
+    } catch (error) {
+      console.error('Error saving gratitude:', error);
+    }
+  };
+
+  // === Save Reflection ===
   const saveReflection = async () => {
     if (customQuestion.trim() === '' || reflectionAnswer.trim() === '') return;
     try {
-      await supabase.from('self_reflections').insert({ question: customQuestion.trim(), answer: reflectionAnswer.trim() });
+      await supabase.from('self_reflections').insert({
+        question: customQuestion.trim(),
+        answer: reflectionAnswer.trim()
+      });
       setIsReflectionSaved(true);
       setTimeout(() => setIsReflectionSaved(false), 3000);
       setCustomQuestion('');
@@ -367,11 +535,15 @@ export default function MindfulApp() {
     }
   };
 
+  // === Rate Value ===
   const rateValue = async (valueId, score) => {
     const value = lifeValues.find(v => v.id === valueId);
     if (!value) return;
     try {
-      await supabase.from('value_ratings').insert({ value_name: value.name, score: score });
+      await supabase.from('value_ratings').insert({
+        value_name: value.name,
+        score: score
+      });
       setLifeValues(lifeValues.map(v => v.id === valueId ? { ...v, score } : v));
       loadAllData();
     } catch (error) {
@@ -446,6 +618,28 @@ export default function MindfulApp() {
                 )}
               </h2>
 
+              {/* نمایش وضعیت ثبت امروز */}
+              {todayMood && !selectedQuadrant && (
+                <div className="mb-4 p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                  <p className="text-sm font-bold text-emerald-700">
+                    ✅ امروز احساس خود را ثبت کردی: <span className="text-emerald-900">{todayMood.emotion_label}</span>
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setSelectedQuadrant(todayMood.quadrant);
+                      setSelectedEmotion({
+                        id: todayMood.emotion_id,
+                        label: todayMood.emotion_label,
+                        score: todayMood.score
+                      });
+                    }}
+                    className="mt-2 text-xs font-bold text-indigo-600 underline"
+                  >
+                    ویرایش
+                  </button>
+                </div>
+              )}
+
               {!selectedQuadrant ? (
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={() => setSelectedQuadrant('yellow')} className="flex flex-col items-center justify-center p-6 rounded-2xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-all hover:scale-[1.02]">
@@ -495,7 +689,7 @@ export default function MindfulApp() {
                       onClick={saveMood}
                       className={`mt-4 w-full py-2.5 rounded-xl font-black text-sm flex items-center justify-center gap-2 transition-all duration-300 ${moodSaved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700'}`}
                     >
-                      {moodSaved ? <><CheckCircle2 size={16} /> ثبت شد!</> : 'ثبت وضعیت روحی 🌱'}
+                      {moodSaved ? <><CheckCircle2 size={16} /> ثبت شد!</> : (todayMood ? 'به‌روزرسانی وضعیت روحی 🌱' : 'ثبت وضعیت روحی 🌱')}
                     </button>
                   )}
                 </div>
@@ -513,7 +707,7 @@ export default function MindfulApp() {
                   onClick={saveNews}
                   className={`px-4 py-1.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${newsSaved ? 'bg-emerald-500 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
                 >
-                  {newsSaved ? <><CheckCircle2 size={14} /> ثبت شد!</> : 'ثبت'}
+                  {newsSaved ? <><CheckCircle2 size={14} /> ثبت شد!</> : (todayNewsId ? 'به‌روزرسانی' : 'ثبت')}
                 </button>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -601,7 +795,7 @@ export default function MindfulApp() {
                   onClick={saveGratitude}
                   className={`absolute bottom-4 left-4 px-5 py-2 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${isGratitudeSaved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700'}`}
                 >
-                  {isGratitudeSaved ? <><CheckCircle2 size={14} /> ثبت شد!</> : 'ثبت در کائنات 🌌'}
+                  {isGratitudeSaved ? <><CheckCircle2 size={14} /> ثبت شد!</> : (todayGratitudeId ? 'به‌روزرسانی 🌌' : 'ثبت در کائنات 🌌')}
                 </button>
               </div>
             </div>
