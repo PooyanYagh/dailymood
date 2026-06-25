@@ -10,63 +10,34 @@ export default function ReportsTab({ stats, chartData }) {
   const [chartDataState, setChartDataState] = useState([]);
 
   useEffect(() => {
-    // اگر داده‌های واقعی وجود دارد، از آن استفاده کن
     if (chartData && chartData.length > 0) {
       setChartDataState(chartData);
     } else {
-      // داده‌های پیش‌فرض بر اساس روزهای واقعی
       setChartDataState(getDefaultChartData());
     }
   }, [chartData]);
 
-  // ===== تابع تولید داده‌های پیش‌فرض بر اساس روزهای واقعی =====
+  // ===== تابع تولید داده‌های پیش‌فرض =====
   const getDefaultChartData = () => {
     const today = new Date();
     const data = [];
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     
-    // ۷ روز گذشته (از دیروز به عقب)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dayIndex = d.getDay(); // 0=شنبه, 1=یکشنبه, ...
-      const dayName = days[dayIndex];
-      
-      // برای روزهای آینده (اگر امروز قبل از شنبه باشد)
-      if (i === 0) {
-        data.push({ 
-          day: 'امروز', 
-          score: 5,
-          date: d.toISOString().split('T')[0],
-          isToday: true
-        });
-      } else {
-        data.push({ 
-          day: dayName, 
-          score: 5,
-          date: d.toISOString().split('T')[0],
-          isToday: false
-        });
-      }
+      const dayIndex = d.getDay();
+      data.push({
+        day: i === 0 ? 'امروز' : days[dayIndex],
+        score: 5,
+        date: d.toISOString().split('T')[0],
+        hasData: false
+      });
     }
     return data;
   };
 
-  // ===== دریافت داده‌های نمودار =====
-  const getChartData = () => {
-    if (chartDataState && chartDataState.length > 0) {
-      // اطمینان از اینکه داده‌ها بر اساس تاریخ مرتب شده‌اند
-      return [...chartDataState].sort((a, b) => {
-        if (a.date && b.date) {
-          return new Date(a.date) - new Date(b.date);
-        }
-        return 0;
-      });
-    }
-    return getDefaultChartData();
-  };
-
-  const displayData = getChartData();
+  const displayData = chartDataState.length > 0 ? chartDataState : getDefaultChartData();
 
   return (
     <div className="space-y-6">
@@ -197,23 +168,29 @@ export default function ReportsTab({ stats, chartData }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        {displayData.length === 0 && (
-          <p className="text-center text-xs text-slate-400 mt-2">هنوز داده‌ای برای نمایش وجود ندارد</p>
-        )}
-        {/* نمایش روزهایی که داده دارند */}
+
+        {/* ===== برچسب روزها با وضعیت ===== */}
         <div className="flex flex-wrap justify-center gap-2 mt-3">
           {displayData.map((item, index) => (
             <div 
               key={index} 
               className={`text-[10px] px-2 py-1 rounded-full ${
-                item.score > 7 ? 'bg-emerald-100 text-emerald-700' :
-                item.score > 4 ? 'bg-amber-100 text-amber-700' :
-                'bg-rose-100 text-rose-700'
+                item.hasData ? 
+                  (item.score > 7 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                   item.score > 4 ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                   'bg-rose-100 text-rose-700 border border-rose-200')
+                  : 'bg-slate-100 text-slate-400 border border-slate-200'
               }`}
             >
-              {item.day}: {item.score}/۱۰
+              {item.day}: {item.score}/۱۰ {item.hasData ? '✅' : '⭕'}
             </div>
           ))}
+        </div>
+
+        {/* ===== توضیح ===== */}
+        <div className="flex justify-center gap-4 mt-2 text-[9px] text-slate-400">
+          <span>✅ = ثبت شده</span>
+          <span>⭕ = بدون داده (میانگین)</span>
         </div>
       </div>
     </div>
