@@ -11,4 +11,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  // اطمینان از کپی شدن فایل‌های public در build
+  publicDir: 'public',
 });
