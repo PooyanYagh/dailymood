@@ -15,12 +15,15 @@ import ReportsTab from './components/ReportsTab';
 
 export default function MindfulApp() {
   const [activeTab, setActiveTab] = useState('today');
+  const [hasSavedToday, setHasSavedToday] = useState(false);
+  
   const {
     todayData,
     history,
     stats,
     streakDays,
     loading,
+    loadTodayData,
     saveMood,
     saveNews,
     saveGratitude,
@@ -30,6 +33,17 @@ export default function MindfulApp() {
     saveMeditation,
     saveReflection
   } = useSupabase();
+
+  // ===== بررسی وضعیت ثبت امروز =====
+  useEffect(() => {
+    const checkToday = () => {
+      const hasMood = todayData.mood !== null;
+      const hasNews = todayData.news !== null;
+      const hasGratitude = todayData.gratitude !== null;
+      setHasSavedToday(hasMood || hasNews || hasGratitude);
+    };
+    checkToday();
+  }, [todayData]);
 
   // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD =====
   const toDateStr = (date) => {
@@ -59,7 +73,7 @@ export default function MindfulApp() {
           hasData: false
         });
       }
-      return data; // ✅ بدون مقدار ۵
+      return data;
     }
 
     // ایجاد مپ از تاریخ‌های ثبت شده
@@ -88,7 +102,12 @@ export default function MindfulApp() {
       });
     }
 
-    return data; // ✅ بدون پر کردن مقادیر null
+    return data;
+  };
+
+  // ===== رفرش دستی داده‌های امروز =====
+  const handleRefreshToday = async () => {
+    await loadTodayData();
   };
 
   if (loading) {
@@ -110,25 +129,60 @@ export default function MindfulApp() {
         
         {activeTab === 'today' && (
           <div className="space-y-6">
+            {/* ===== وضعیت ثبت امروز ===== */}
+            <div className={`p-4 rounded-2xl text-center border ${
+              hasSavedToday 
+                ? 'bg-emerald-50 border-emerald-100' 
+                : 'bg-amber-50 border-amber-100'
+            }`}>
+              <p className="text-sm font-bold">
+                {hasSavedToday ? (
+                  <>✅ امروز ثبت کردی! داده‌ها تا پایان روز ماندگار هستند.</>
+                ) : (
+                  <>📝 امروز هنوز چیزی ثبت نکردی. وقتشه!</>
+                )}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-1">
+                {hasSavedToday 
+                  ? 'فردا صبح صفحه خالی می‌شود برای ثبت روز جدید' 
+                  : 'هر چیزی که ثبت کنی تا آخر روز می‌ماند'}
+              </p>
+              {hasSavedToday && (
+                <button 
+                  onClick={handleRefreshToday}
+                  className="mt-2 text-[10px] text-indigo-500 underline hover:text-indigo-700"
+                >
+                  🔄 بروزرسانی
+                </button>
+              )}
+            </div>
+
+            {/* ===== کامپوننت‌های امروز ===== */}
             <MoodTracker 
               todayMood={todayData.mood} 
               onSave={saveMood} 
             />
+            
             <NewsSection 
               todayNews={todayData.news} 
               onSave={saveNews} 
             />
+            
             <GratitudeSection 
               todayGratitude={todayData.gratitude} 
               onSave={saveGratitude} 
             />
+            
             <ReflectionSection onSave={saveReflection} />
+            
             <WishesSection 
               wishes={history.wishes} 
               onSave={saveWish} 
               onToggle={toggleWish} 
             />
+            
             <ValuesCompass onSaveValue={saveValue} />
+            
             <MeditationStudio onSave={saveMeditation} />
           </div>
         )}
