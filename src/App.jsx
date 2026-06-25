@@ -181,7 +181,10 @@ export default function MindfulApp() {
               onToggle={toggleWish} 
             />
             
-            <ValuesCompass onSaveValue={saveValue} />
+            <ValuesCompass 
+              onSaveValue={saveValue}
+              todayValues={history.values} 
+            />
             
             <MeditationStudio onSave={saveMeditation} />
           </div>
