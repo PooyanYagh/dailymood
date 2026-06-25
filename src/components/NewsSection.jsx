@@ -1,10 +1,20 @@
 // src/components/NewsSection.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BookOpen, ThumbsUp, ThumbsDown, CheckCircle2 } from 'lucide-react';
 
 export default function NewsSection({ todayNews, onSave }) {
   const [news, setNews] = useState({ good: '', bad: '' });
   const [newsSaved, setNewsSaved] = useState(false);
+
+  // ===== بارگذاری داده‌های امروز =====
+  useEffect(() => {
+    if (todayNews) {
+      setNews({
+        good: todayNews.good_news || '',
+        bad: todayNews.bad_news || ''
+      });
+    }
+  }, [todayNews]);
 
   const handleSave = async () => {
     if (news.good.trim() === '' && news.bad.trim() === '') return;
@@ -12,7 +22,6 @@ export default function NewsSection({ todayNews, onSave }) {
     if (success) {
       setNewsSaved(true);
       setTimeout(() => setNewsSaved(false), 3000);
-      setNews({ good: '', bad: '' });
     }
   };
 
@@ -25,11 +34,20 @@ export default function NewsSection({ todayNews, onSave }) {
         </span>
         <button 
           onClick={handleSave}
-          className={`px-4 py-1.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${newsSaved ? 'bg-emerald-500 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+          className={`px-4 py-1.5 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${
+            newsSaved 
+              ? 'bg-emerald-500 text-white' 
+              : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+          }`}
         >
-          {newsSaved ? <><CheckCircle2 size={14} /> ثبت شد!</> : (todayNews ? 'به‌روزرسانی' : 'ثبت')}
+          {newsSaved ? (
+            <><CheckCircle2 size={14} /> ثبت شد!</>
+          ) : (
+            todayNews ? 'به‌روزرسانی' : 'ثبت'
+          )}
         </button>
       </h2>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100">
           <label className="flex items-center gap-2 text-sm font-bold text-emerald-700 mb-2">
