@@ -28,8 +28,17 @@ export function useSupabase() {
   const [streakDays, setStreakDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // ===== تابع کمکی برای تبدیل تاریخ =====
+  const toDateStr = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getTodayRange = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toDateStr(new Date());
     return { start: `${today}T00:00:00`, end: `${today}T23:59:59` };
   };
 
@@ -89,22 +98,20 @@ export function useSupabase() {
           }
         }));
 
-        // 2. محاسبه streak (زنجیره روزهای ثبت احساس)
+        // 2. محاسبه streak
         const uniqueDates = [...new Set(moodHistory.data.map(log => 
-          new Date(log.created_at).toISOString().split('T')[0]
+          toDateStr(log.created_at)
         ))].sort();
         
         let streak = 0;
         if (uniqueDates.length > 0) {
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = toDateStr(new Date());
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          const yesterdayStr = toDateStr(yesterday);
           
-          // بررسی اینکه امروز یا دیروز ثبت داشته
           if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
             streak = 1;
-            // محاسبه زنجیره
             for (let i = uniqueDates.length - 1; i > 0; i--) {
               const current = new Date(uniqueDates[i]);
               const prev = new Date(uniqueDates[i - 1]);
@@ -125,8 +132,8 @@ export function useSupabase() {
         let goodCount = 0;
         let badCount = 0;
         newsData.data.forEach(item => {
-          if (item.good_news) goodCount++;
-          if (item.bad_news) badCount++;
+          if (item.good_news && item.good_news.trim() !== '') goodCount++;
+          if (item.bad_news && item.bad_news.trim() !== '') badCount++;
         });
         setStats(prev => ({
           ...prev,
@@ -189,7 +196,6 @@ export function useSupabase() {
 
   // ===== عملیات CRUD =====
   
-  // 1. ثبت/به‌روزرسانی احساس
   const saveMood = async (emotion, quadrant) => {
     if (!emotion) return false;
     try {
@@ -219,7 +225,6 @@ export function useSupabase() {
     }
   };
 
-  // 2. ثبت/به‌روزرسانی اخبار
   const saveNews = async (good, bad) => {
     if (!good?.trim() && !bad?.trim()) return false;
     try {
@@ -245,7 +250,6 @@ export function useSupabase() {
     }
   };
 
-  // 3. ثبت/به‌روزرسانی شکرگزاری
   const saveGratitude = async (category, content) => {
     if (!content?.trim()) return false;
     try {
@@ -271,7 +275,6 @@ export function useSupabase() {
     }
   };
 
-  // 4. ثبت خواسته جدید
   const saveWish = async (content) => {
     if (!content?.trim()) return false;
     try {
@@ -284,7 +287,6 @@ export function useSupabase() {
     }
   };
 
-  // 5. تغییر وضعیت خواسته (محقق/در انتظار)
   const toggleWish = async (id, currentStatus) => {
     try {
       const newStatus = !currentStatus;
@@ -302,10 +304,8 @@ export function useSupabase() {
     }
   };
 
-  // 6. ثبت ارزش (با بررسی تکراری نبودن امروز)
   const saveValue = async (valueName, score) => {
     try {
-      // بررسی می‌کنیم که آیا امروز این ارزش قبلاً ثبت شده؟
       const { start, end } = getTodayRange();
       const { data: existing } = await supabase
         .from('value_ratings')
@@ -316,13 +316,11 @@ export function useSupabase() {
         .limit(1);
       
       if (existing && existing.length > 0) {
-        // به‌روزرسانی
         await supabase
           .from('value_ratings')
           .update({ score })
           .eq('id', existing[0].id);
       } else {
-        // درج جدید
         await supabase
           .from('value_ratings')
           .insert({ value_name: valueName, score });
@@ -335,7 +333,6 @@ export function useSupabase() {
     }
   };
 
-  // 7. ثبت مدیتیشن
   const saveMeditation = async (seconds, chakras, notes) => {
     try {
       await supabase.from('meditation_logs')
@@ -352,7 +349,6 @@ export function useSupabase() {
     }
   };
 
-  // 8. ثبت پرسش و پاسخ (Reflection)
   const saveReflection = async (question, answer) => {
     if (!question?.trim() || !answer?.trim()) return false;
     try {
@@ -375,14 +371,11 @@ export function useSupabase() {
   }, []);
 
   return {
-    // داده‌ها
     todayData,
     history,
     stats,
     streakDays,
     loading,
-    
-    // عملیات‌ها
     loadAllData,
     saveMood,
     saveNews,
