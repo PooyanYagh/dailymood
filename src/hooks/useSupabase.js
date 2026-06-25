@@ -28,7 +28,7 @@ export function useSupabase() {
   const [streakDays, setStreakDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // ===== تابع کمکی برای تبدیل تاریخ =====
+  // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD با در نظر گرفتن منطقه زمانی =====
   const toDateStr = (date) => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -37,17 +37,20 @@ export function useSupabase() {
     return `${year}-${month}-${day}`;
   };
 
+  // ===== دریافت بازه زمانی امروز =====
   const getTodayRange = () => {
     const today = toDateStr(new Date());
-    return { start: `${today}T00:00:00`, end: `${today}T23:59:59` };
+    return { 
+      start: `${today}T00:00:00`, 
+      end: `${today}T23:59:59` 
+    };
   };
 
-  const loadAllData = async () => {
-    setLoading(true);
+  // ===== بارگذاری داده‌های امروز =====
+  const loadTodayData = async () => {
     try {
       const { start, end } = getTodayRange();
 
-      // ===== بارگذاری داده‌های امروز =====
       const [moodRes, newsRes, gratitudeRes] = await Promise.all([
         supabase.from('mood_logs').select('*').gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false }).limit(1),
         supabase.from('daily_events').select('*').gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false }).limit(1),
@@ -60,7 +63,21 @@ export function useSupabase() {
         gratitude: gratitudeRes.data?.[0] || null
       });
 
-      // ===== بارگذاری تاریخچه کامل =====
+      return { mood: moodRes.data?.[0] || null, news: newsRes.data?.[0] || null, gratitude: gratitudeRes.data?.[0] || null };
+    } catch (error) {
+      console.error('Error loading today data:', error);
+      return null;
+    }
+  };
+
+  // ===== بارگذاری همه داده‌ها =====
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // بارگذاری داده‌های امروز
+      await loadTodayData();
+
+      // بارگذاری تاریخچه کامل
       const [moodHistory, gratitudeHistory, wishesData, newsData, meditationData, valuesData] = await Promise.all([
         supabase.from('mood_logs').select('*').order('created_at', { ascending: false }).limit(50),
         supabase.from('gratitude_logs').select('*').order('created_at', { ascending: false }).limit(30),
@@ -217,7 +234,8 @@ export function useSupabase() {
             score: emotion.score 
           });
       }
-      await loadAllData();
+      await loadTodayData(); // فقط داده‌های امروز را رفرش کن
+      await loadAllData(); // همه داده‌ها را رفرش کن
       return true;
     } catch (error) {
       console.error('Error saving mood:', error);
@@ -242,6 +260,7 @@ export function useSupabase() {
             bad_news: bad?.trim() || null 
           });
       }
+      await loadTodayData();
       await loadAllData();
       return true;
     } catch (error) {
@@ -267,6 +286,7 @@ export function useSupabase() {
             content: content.trim() 
           });
       }
+      await loadTodayData();
       await loadAllData();
       return true;
     } catch (error) {
@@ -377,6 +397,7 @@ export function useSupabase() {
     streakDays,
     loading,
     loadAllData,
+    loadTodayData,
     saveMood,
     saveNews,
     saveGratitude,
