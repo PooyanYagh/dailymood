@@ -1,6 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
-import { Sun, BookOpen, Activity } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { useSupabase } from './hooks/useSupabase';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -21,22 +20,105 @@ export default function MindfulApp() {
     history,
     stats,
     streakDays,
+    loading,
     saveMood,
     saveNews,
     saveGratitude,
     saveWish,
     toggleWish,
     saveValue,
-    saveMeditation
+    saveMeditation,
+    saveReflection
   } = useSupabase();
 
-  // دیتای پیش‌فرض برای نمودار
-  const defaultChartData = [
-    { day: 'شنبه', score: 5 }, { day: 'یکشنبه', score: 6 }, 
-    { day: 'دوشنبه', score: 4 }, { day: 'سه‌شنبه', score: 7 },
-    { day: 'چهارشنبه', score: 6 }, { day: 'پنجشنبه', score: 8 },
-    { day: 'امروز', score: 8 }
-  ];
+  // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD =====
+  const toDateStr = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // ===== تابع تولید داده‌های نمودار از تاریخچه =====
+  const getChartDataFromHistory = () => {
+    const today = new Date();
+    const data = [];
+    const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+
+    // اگر هیچ داده‌ای وجود ندارد
+    if (!history.moods || history.moods.length === 0) {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dayIndex = d.getDay();
+        data.push({
+          day: i === 0 ? 'امروز' : days[dayIndex],
+          score: null,
+          date: toDateStr(d),
+          hasData: false
+        });
+      }
+      // همه را ۵ بگذار
+      return data.map(d => ({ ...d, score: 5 }));
+    }
+
+    // ایجاد مپ از تاریخ‌های ثبت شده
+    const moodMap = {};
+    history.moods.forEach(mood => {
+      const dateStr = toDateStr(mood.created_at);
+      // اگر چند ثبت در یک روز داریم، آخرین را نگه می‌داریم
+      moodMap[dateStr] = mood.score;
+    });
+
+    // ساخت داده‌های ۷ روز گذشته
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = toDateStr(d);
+      const dayIndex = d.getDay();
+      const dayName = i === 0 ? 'امروز' : days[dayIndex];
+
+      const hasData = moodMap[dateStr] !== undefined;
+      const score = hasData ? moodMap[dateStr] : null;
+
+      data.push({
+        day: dayName,
+        score: score,
+        date: dateStr,
+        hasData: hasData
+      });
+    }
+
+    // پر کردن مقادیر null
+    const hasAnyData = data.some(d => d.hasData);
+    
+    if (!hasAnyData) {
+      return data.map(d => ({ ...d, score: 5 }));
+    }
+
+    // محاسبه میانگین برای روزهای بدون داده
+    const validScores = data.filter(d => d.hasData).map(d => d.score);
+    const avgScore = validScores.length > 0 
+      ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) 
+      : 5;
+
+    return data.map(d => ({
+      ...d,
+      score: d.hasData ? d.score : avgScore
+    }));
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FE] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-spin">⏳</div>
+          <p className="text-sm font-bold text-slate-400">در حال بارگذاری...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FE] pb-24 font-sans text-slate-800" dir="rtl">
@@ -58,7 +140,7 @@ export default function MindfulApp() {
               todayGratitude={todayData.gratitude} 
               onSave={saveGratitude} 
             />
-            <ReflectionSection />
+            <ReflectionSection onSave={saveReflection} />
             <WishesSection 
               wishes={history.wishes} 
               onSave={saveWish} 
@@ -76,8 +158,7 @@ export default function MindfulApp() {
         {activeTab === 'reports' && (
           <ReportsTab 
             stats={stats} 
-            chartData={[]} 
-            defaultChartData={defaultChartData} 
+            chartData={getChartDataFromHistory()} 
           />
         )}
 
