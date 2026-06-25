@@ -47,8 +47,9 @@ export default function ValuesCompass({ onSaveValue }) {
       setSaveStatus(allSuccess ? 'success' : 'error');
       
       if (allSuccess) {
-        // بعد از ۳ ثانیه پیام موفقیت را پاک کن
+        // 🆕 بعد از ثبت موفق، امتیازها را ریست کن (برای ثبت روز بعد)
         setTimeout(() => {
+          setValues(values.map(v => ({ ...v, score: 0 })));
           setSaveStatus(null);
         }, 3000);
       }
