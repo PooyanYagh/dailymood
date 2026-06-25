@@ -29,7 +29,7 @@ export default function ReportsTab({ stats, chartData }) {
       const dayIndex = d.getDay();
       data.push({
         day: i === 0 ? 'امروز' : days[dayIndex],
-        score: 5,
+        score: null,  // ✅ مقدار null برای بدون داده
         date: d.toISOString().split('T')[0],
         hasData: false
       });
@@ -37,7 +37,23 @@ export default function ReportsTab({ stats, chartData }) {
     return data;
   };
 
-  const displayData = chartDataState.length > 0 ? chartDataState : getDefaultChartData();
+  // ===== فیلتر کردن داده‌های معتبر برای نمودار =====
+  const getValidChartData = () => {
+    const data = chartDataState.length > 0 ? chartDataState : getDefaultChartData();
+    
+    // اگر هیچ داده‌ای با hasData=true وجود ندارد، همه را null بگذار
+    const hasAnyData = data.some(d => d.hasData === true);
+    if (!hasAnyData) {
+      return data.map(d => ({ ...d, score: null }));
+    }
+    
+    return data;
+  };
+
+  const displayData = getValidChartData();
+
+  // ===== بررسی وجود داده برای نمایش پیام =====
+  const hasRealData = displayData.some(d => d.hasData === true);
 
   return (
     <div className="space-y-6">
@@ -128,70 +144,115 @@ export default function ReportsTab({ stats, chartData }) {
         
         {/* ===== نمودار ارتعاش و آرامش ===== */}
         <h3 className="text-xs font-black text-slate-500 mb-4">نمودار ارتعاش و آرامش (۷ روز گذشته)</h3>
-        <div className="h-48 w-full" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={displayData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-              <XAxis 
-                dataKey="day" 
-                tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} 
-                tickLine={false} 
-                axisLine={false} 
-              />
-              <YAxis 
-                tick={{ fill: '#94A3B8', fontSize: 10 }} 
-                tickLine={false} 
-                axisLine={false} 
-                domain={[0, 10]} 
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  borderRadius: '16px', 
-                  border: 'none', 
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
-                  fontSize: '12px', 
-                  textAlign: 'right', 
-                  direction: 'rtl' 
-                }}
-                itemStyle={{ color: '#4F46E5', fontWeight: 'bold' }}
-                labelStyle={{ fontWeight: 'bold', color: '#1E1B4B' }}
-                formatter={(value) => [`${value} از ۱۰`, 'سطح ارتعاش']}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="score" 
-                name="سطح ارتعاش" 
-                stroke="#8B5CF6" 
-                strokeWidth={4} 
-                dot={{ fill: '#FFFFFF', stroke: '#8B5CF6', strokeWidth: 3, r: 5 }} 
-                activeDot={{ r: 8, fill: '#4F46E5', stroke: '#C7D2FE' }} 
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* ===== برچسب روزها با وضعیت ===== */}
-        <div className="flex flex-wrap justify-center gap-2 mt-3">
-          {displayData.map((item, index) => (
-            <div 
-              key={index} 
-              className={`text-[10px] px-2 py-1 rounded-full ${
-                item.hasData ? 
-                  (item.score > 7 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                   item.score > 4 ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                   'bg-rose-100 text-rose-700 border border-rose-200')
-                  : 'bg-slate-100 text-slate-400 border border-slate-200'
-              }`}
-            >
-              {item.day}: {item.score}/۱۰ {item.hasData ? '✅' : '⭕'}
+        
+        {!hasRealData ? (
+          // ===== پیام وقتی هیچ داده‌ای وجود ندارد =====
+          <div className="h-48 w-full bg-slate-50 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+            <span className="text-4xl mb-3">📊</span>
+            <p className="text-sm font-bold text-slate-400">هنوز داده‌ای برای نمایش وجود ندارد</p>
+            <p className="text-xs text-slate-300 mt-1">با ثبت احساسات روزانه، نمودار پر خواهد شد</p>
+          </div>
+        ) : (
+          <>
+            <div className="h-48 w-full" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={displayData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <XAxis 
+                    dataKey="day" 
+                    tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} 
+                    tickLine={false} 
+                    axisLine={false} 
+                  />
+                  <YAxis 
+                    tick={{ fill: '#94A3B8', fontSize: 10 }} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    domain={[0, 10]} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      borderRadius: '16px', 
+                      border: 'none', 
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
+                      fontSize: '12px', 
+                      textAlign: 'right', 
+                      direction: 'rtl' 
+                    }}
+                    itemStyle={{ color: '#4F46E5', fontWeight: 'bold' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#1E1B4B' }}
+                    formatter={(value) => {
+                      if (value === null || value === undefined) {
+                        return ['بدون داده', 'سطح ارتعاش'];
+                      }
+                      return [`${value} از ۱۰`, 'سطح ارتعاش'];
+                    }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="score" 
+                    name="سطح ارتعاش" 
+                    stroke="#8B5CF6" 
+                    strokeWidth={4} 
+                    dot={(props) => {
+                      const { cx, cy, payload } = props;
+                      if (payload.hasData) {
+                        return (
+                          <circle 
+                            key={props.index}
+                            cx={cx} 
+                            cy={cy} 
+                            r={5} 
+                            fill="#FFFFFF" 
+                            stroke="#8B5CF6" 
+                            strokeWidth={3} 
+                          />
+                        );
+                      }
+                      return (
+                        <circle 
+                          key={props.index}
+                          cx={cx} 
+                          cy={cy} 
+                          r={3} 
+                          fill="#E2E8F0" 
+                          stroke="#CBD5E1" 
+                          strokeWidth={1} 
+                          strokeDasharray="2,2"
+                        />
+                      );
+                    }}
+                    activeDot={{ r: 8, fill: '#4F46E5', stroke: '#C7D2FE' }} 
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
 
-        {/* ===== توضیح ===== */}
-        <div className="flex justify-center gap-4 mt-2 text-[9px] text-slate-400">
-          <span>✅ = ثبت شده</span>
-          <span>⭕ = بدون داده (میانگین)</span>
-        </div>
+            {/* ===== برچسب روزها با وضعیت ===== */}
+            <div className="flex flex-wrap justify-center gap-2 mt-3">
+              {displayData.map((item, index) => (
+                <div 
+                  key={index} 
+                  className={`text-[10px] px-2 py-1 rounded-full ${
+                    item.hasData ? 
+                      (item.score > 7 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                       item.score > 4 ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                       'bg-rose-100 text-rose-700 border border-rose-200')
+                      : 'bg-slate-100 text-slate-400 border border-slate-200'
+                  }`}
+                >
+                  {item.day}: {item.hasData ? `${item.score}/۱۰ ✅` : 'بدون داده ⭕'}
+                </div>
+              ))}
+            </div>
+
+            {/* ===== توضیح ===== */}
+            <div className="flex justify-center gap-4 mt-2 text-[9px] text-slate-400">
+              <span>✅ = ثبت شده</span>
+              <span>⭕ = بدون داده</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
