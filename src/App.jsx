@@ -15,7 +15,6 @@ import ReportsTab from './components/ReportsTab';
 
 export default function MindfulApp() {
   const [activeTab, setActiveTab] = useState('today');
-  const [hasSavedToday, setHasSavedToday] = useState(false);
   
   const {
     todayData,
@@ -34,17 +33,6 @@ export default function MindfulApp() {
     saveReflection
   } = useSupabase();
 
-  // ===== بررسی وضعیت ثبت امروز =====
-  useEffect(() => {
-    const checkToday = () => {
-      const hasMood = todayData.mood !== null;
-      const hasNews = todayData.news !== null;
-      const hasGratitude = todayData.gratitude !== null;
-      setHasSavedToday(hasMood || hasNews || hasGratitude);
-    };
-    checkToday();
-  }, [todayData]);
-
   // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD =====
   const toDateStr = (date) => {
     const d = new Date(date);
@@ -60,7 +48,6 @@ export default function MindfulApp() {
     const data = [];
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
-    // اگر هیچ داده‌ای وجود ندارد، همه را بدون داده برگردان
     if (!history.moods || history.moods.length === 0) {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
@@ -76,14 +63,12 @@ export default function MindfulApp() {
       return data;
     }
 
-    // ایجاد مپ از تاریخ‌های ثبت شده
     const moodMap = {};
     history.moods.forEach(mood => {
       const dateStr = toDateStr(mood.created_at);
       moodMap[dateStr] = mood.score;
     });
 
-    // ساخت داده‌های ۷ روز گذشته
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
@@ -105,11 +90,6 @@ export default function MindfulApp() {
     return data;
   };
 
-  // ===== رفرش دستی داده‌های امروز =====
-  const handleRefreshToday = async () => {
-    await loadTodayData();
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FE] flex items-center justify-center">
@@ -129,35 +109,6 @@ export default function MindfulApp() {
         
         {activeTab === 'today' && (
           <div className="space-y-6">
-            {/* ===== وضعیت ثبت امروز ===== */}
-            <div className={`p-4 rounded-2xl text-center border ${
-              hasSavedToday 
-                ? 'bg-emerald-50 border-emerald-100' 
-                : 'bg-amber-50 border-amber-100'
-            }`}>
-              <p className="text-sm font-bold">
-                {hasSavedToday ? (
-                  <>✅ امروز ثبت کردی! داده‌ها تا پایان روز ماندگار هستند.</>
-                ) : (
-                  <>📝 امروز هنوز چیزی ثبت نکردی. وقتشه!</>
-                )}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">
-                {hasSavedToday 
-                  ? 'فردا صبح صفحه خالی می‌شود برای ثبت روز جدید' 
-                  : 'هر چیزی که ثبت کنی تا آخر روز می‌ماند'}
-              </p>
-              {hasSavedToday && (
-                <button 
-                  onClick={handleRefreshToday}
-                  className="mt-2 text-[10px] text-indigo-500 underline hover:text-indigo-700"
-                >
-                  🔄 بروزرسانی
-                </button>
-              )}
-            </div>
-
-            {/* ===== کامپوننت‌های امروز ===== */}
             <MoodTracker 
               todayMood={todayData.mood} 
               onSave={saveMood} 
