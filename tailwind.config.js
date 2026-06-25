@@ -8,7 +8,20 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Vazirmatn', 'system-ui', 'sans-serif'],
+        sans: ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        dana: ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        'dana-regular': ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        'dana-medium': ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        'dana-bold': ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        'dana-black': ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+        'dana-light': ['Dana-FaNum', 'Vazirmatn', 'Tahoma', 'sans-serif'],
+      },
+      fontWeight: {
+        light: 300,
+        regular: 400,
+        medium: 500,
+        bold: 700,
+        black: 900,
       },
       animation: {
         'ping': 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
