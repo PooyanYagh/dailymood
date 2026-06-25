@@ -1,10 +1,49 @@
 // src/components/ReportsTab.jsx
-import React from 'react';
-import { Activity, Wind, Compass, CheckCircle2, Sparkles } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { 
+  Activity, Wind, Compass, CheckCircle2, Sparkles,
+  ThumbsUp, ThumbsDown
+} from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 export default function ReportsTab({ stats, chartData, defaultChartData }) {
-  const data = chartData.length > 0 ? chartData : defaultChartData;
+  const [chartDataState, setChartDataState] = useState([]);
+
+  // استفاده از داده‌های واقعی یا پیش‌فرض
+  useEffect(() => {
+    if (chartData && chartData.length > 0) {
+      setChartDataState(chartData);
+    } else {
+      setChartDataState(defaultChartData || getDefaultChartData());
+    }
+  }, [chartData]);
+
+  // دیتای پیش‌فرض برای نمودار
+  const getDefaultChartData = () => {
+    const today = new Date();
+    const days = [];
+    const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dayName = weekDays[d.getDay()];
+      days.push({
+        day: dayName,
+        score: 5 + Math.floor(Math.random() * 5), // مقدار پیش‌فرض تصادفی
+        date: d.toISOString().split('T')[0]
+      });
+    }
+    return days;
+  };
+
+  // تبدیل داده‌های چارت به فرمت مناسب
+  const getChartData = () => {
+    if (chartDataState && chartDataState.length > 0) {
+      return chartDataState;
+    }
+    return defaultChartData || getDefaultChartData();
+  };
 
   return (
     <div className="space-y-6">
@@ -16,36 +55,37 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
           </h2>
         </div>
 
-        {/* توزیع احساسات */}
+        {/* ===== توزیع احساسات ===== */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <h3 className="text-xs font-black text-slate-500 mb-3">سهم رنگ‌های احساسی من</h3>
             <div className="flex w-full h-4 rounded-full overflow-hidden mb-3">
-              <div style={{ width: `${stats.moodDistribution.yellow}%` }} className="bg-amber-400" />
-              <div style={{ width: `${stats.moodDistribution.green}%` }} className="bg-emerald-500" />
-              <div style={{ width: `${stats.moodDistribution.blue}%` }} className="bg-blue-500" />
-              <div style={{ width: `${stats.moodDistribution.red}%` }} className="bg-rose-500" />
+              <div style={{ width: `${stats.moodDistribution?.yellow || 0}%` }} className="bg-amber-400" />
+              <div style={{ width: `${stats.moodDistribution?.green || 0}%` }} className="bg-emerald-500" />
+              <div style={{ width: `${stats.moodDistribution?.blue || 0}%` }} className="bg-blue-500" />
+              <div style={{ width: `${stats.moodDistribution?.red || 0}%` }} className="bg-rose-500" />
             </div>
             <div className="grid grid-cols-2 gap-y-2 gap-x-1">
               <div className="flex items-center gap-1.5 text-[10px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
-                {stats.moodDistribution.yellow}٪ انرژی بالا/مثبت
+                {stats.moodDistribution?.yellow || 0}٪ انرژی بالا/مثبت
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                {stats.moodDistribution.green}٪ آرامش/مثبت
+                {stats.moodDistribution?.green || 0}٪ آرامش/مثبت
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-blue-500" />
-                {stats.moodDistribution.blue}٪ خستگی/غم
+                {stats.moodDistribution?.blue || 0}٪ خستگی/غم
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-bold">
                 <span className="w-2 h-2 rounded-full bg-rose-500" />
-                {stats.moodDistribution.red}٪ خشم/اضطراب
+                {stats.moodDistribution?.red || 0}٪ خشم/اضطراب
               </div>
             </div>
           </div>
 
+          {/* ===== آمار اخبار ===== */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-100 text-center flex flex-col justify-center">
               <span className="text-lg mb-1">👍</span>
@@ -63,13 +103,13 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
                 <p className="text-xs font-bold text-indigo-900">بیشترین شکرگزاری بابت:</p>
               </div>
               <p className="text-sm font-black text-indigo-700 bg-white px-3 py-1.5 rounded-lg shadow-sm">
-                {stats.topGratitude}
+                {stats.topGratitude || 'هنوز ثبت نشده'}
               </p>
             </div>
           </div>
         </div>
 
-        {/* آمار مدیتیشن و خواسته‌ها */}
+        {/* ===== آمار مدیتیشن و خواسته‌ها ===== */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           <div className="bg-cyan-50/50 rounded-2xl p-4 border border-cyan-100 flex flex-col justify-center items-center text-center">
             <Wind size={24} className="text-cyan-500 mb-2" />
@@ -92,25 +132,50 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
           </div>
         </div>
         
-        {/* نمودار */}
-        <h3 className="text-xs font-black text-slate-500 mb-4">نمودار ارتعاش و آرامش</h3>
+        {/* ===== نمودار ارتعاش و آرامش ===== */}
+        <h3 className="text-xs font-black text-slate-500 mb-4">نمودار ارتعاش و آرامش (هفته گذشته)</h3>
         <div className="h-48 w-full" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-              <XAxis dataKey="day" tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#94A3B8', fontSize: 10 }} tickLine={false} axisLine={false} domain={[0, 10]} />
+            <LineChart data={getChartData()} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <XAxis 
+                dataKey="day" 
+                tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} 
+                tickLine={false} 
+                axisLine={false} 
+              />
+              <YAxis 
+                tick={{ fill: '#94A3B8', fontSize: 10 }} 
+                tickLine={false} 
+                axisLine={false} 
+                domain={[0, 10]} 
+              />
               <Tooltip 
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '12px', textAlign: 'right', direction: 'rtl' }}
+                contentStyle={{ 
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.1)', 
+                  fontSize: '12px', 
+                  textAlign: 'right', 
+                  direction: 'rtl' 
+                }}
                 itemStyle={{ color: '#4F46E5', fontWeight: 'bold' }}
+                labelStyle={{ fontWeight: 'bold', color: '#1E1B4B' }}
               />
               <Line 
-                type="monotone" dataKey="score" name="سطح ارتعاش" stroke="#8B5CF6" strokeWidth={4} 
+                type="monotone" 
+                dataKey="score" 
+                name="سطح ارتعاش" 
+                stroke="#8B5CF6" 
+                strokeWidth={4} 
                 dot={{ fill: '#FFFFFF', stroke: '#8B5CF6', strokeWidth: 3, r: 5 }} 
                 activeDot={{ r: 8, fill: '#4F46E5', stroke: '#C7D2FE' }} 
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
+        {getChartData().length === 0 && (
+          <p className="text-center text-xs text-slate-400 mt-2">هنوز داده‌ای برای نمایش وجود ندارد</p>
+        )}
       </div>
     </div>
   );
