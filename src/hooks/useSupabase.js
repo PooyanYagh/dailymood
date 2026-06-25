@@ -28,7 +28,7 @@ export function useSupabase() {
   const [streakDays, setStreakDays] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD با در نظر گرفتن منطقه زمانی =====
+  // ===== تابع کمکی برای تبدیل تاریخ به YYYY-MM-DD =====
   const toDateStr = (date) => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -63,7 +63,11 @@ export function useSupabase() {
         gratitude: gratitudeRes.data?.[0] || null
       });
 
-      return { mood: moodRes.data?.[0] || null, news: newsRes.data?.[0] || null, gratitude: gratitudeRes.data?.[0] || null };
+      return { 
+        mood: moodRes.data?.[0] || null, 
+        news: newsRes.data?.[0] || null, 
+        gratitude: gratitudeRes.data?.[0] || null 
+      };
     } catch (error) {
       console.error('Error loading today data:', error);
       return null;
@@ -234,8 +238,8 @@ export function useSupabase() {
             score: emotion.score 
           });
       }
-      await loadTodayData(); // فقط داده‌های امروز را رفرش کن
-      await loadAllData(); // همه داده‌ها را رفرش کن
+      await loadTodayData();
+      await loadAllData();
       return true;
     } catch (error) {
       console.error('Error saving mood:', error);
