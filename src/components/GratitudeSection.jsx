@@ -1,5 +1,5 @@
 // src/components/GratitudeSection.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, PlusCircle, X, CheckCircle2 } from 'lucide-react';
 
 const DEFAULT_CATEGORIES = ['خانواده', 'شغل', 'سلامتی', 'آرامش درون', 'رشد شخصی', 'مالی'];
@@ -12,13 +12,20 @@ export default function GratitudeSection({ todayGratitude, onSave }) {
   const [showNewCat, setShowNewCat] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // ===== بارگذاری داده‌های امروز =====
+  useEffect(() => {
+    if (todayGratitude) {
+      setText(todayGratitude.content || '');
+      setSelectedCat(todayGratitude.category_name || 'خانواده');
+    }
+  }, [todayGratitude]);
+
   const handleSave = async () => {
     if (text.trim() === '') return;
     const success = await onSave(selectedCat, text);
     if (success) {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-      setText('');
     }
   };
 
@@ -48,7 +55,11 @@ export default function GratitudeSection({ todayGratitude, onSave }) {
             <button
               key={idx}
               onClick={() => setSelectedCat(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedCat === cat ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedCat === cat 
+                  ? 'bg-indigo-600 text-white shadow-md' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
             >
               {cat}
             </button>
@@ -88,9 +99,17 @@ export default function GratitudeSection({ todayGratitude, onSave }) {
         
         <button 
           onClick={handleSave}
-          className={`absolute bottom-4 left-4 px-5 py-2 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${saved ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700'}`}
+          className={`absolute bottom-4 left-4 px-5 py-2 rounded-xl font-black text-xs flex items-center gap-2 transition-all duration-300 ${
+            saved 
+              ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+              : 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700'
+          }`}
         >
-          {saved ? <><CheckCircle2 size={14} /> ثبت شد!</> : (todayGratitude ? 'به‌روزرسانی 🌌' : 'ثبت در کائنات 🌌')}
+          {saved ? (
+            <><CheckCircle2 size={14} /> ثبت شد!</>
+          ) : (
+            todayGratitude ? 'به‌روزرسانی 🌌' : 'ثبت در کائنات 🌌'
+          )}
         </button>
       </div>
     </div>
