@@ -1,15 +1,58 @@
 // src/components/HistoryTab.jsx
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   BookOpen, ThumbsUp, ThumbsDown, 
   Heart, Sparkles, Wind, Compass, 
-  CheckCircle2, X
+  CheckCircle2, X, Star, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 export default function HistoryTab({ history }) {
-  const [activeFilter, setActiveFilter] = useState('all'); // all | moods | news | gratitude | wishes | meditation | values
+  const [activeFilter, setActiveFilter] = useState('all');
 
-  // محاسبه تعداد هر بخش
+  // ===== محاسبه آمار ارزش‌ها =====
+  const valueStats = useMemo(() => {
+    if (!history.values || history.values.length === 0) {
+      return { average: 0, total: 0, ranked: [], counts: {} };
+    }
+
+    // محاسبه میانگین هر ارزش
+    const valueMap = {};
+    history.values.forEach(item => {
+      if (!valueMap[item.value_name]) {
+        valueMap[item.value_name] = { scores: [], total: 0, count: 0 };
+      }
+      valueMap[item.value_name].scores.push(item.score);
+      valueMap[item.value_name].total += item.score;
+      valueMap[item.value_name].count += 1;
+    });
+
+    // محاسبه میانگین و رتبه‌بندی
+    const ranked = Object.keys(valueMap).map(name => {
+      const avg = valueMap[name].total / valueMap[name].count;
+      return {
+        name,
+        average: Math.round(avg * 10) / 10,
+        count: valueMap[name].count,
+        scores: valueMap[name].scores
+      };
+    });
+
+    // مرتب‌سازی بر اساس میانگین (بالاترین اول)
+    ranked.sort((a, b) => b.average - a.average);
+
+    // میانگین کلی
+    const allScores = history.values.map(v => v.score);
+    const overallAvg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
+
+    return {
+      average: Math.round(overallAvg * 10) / 10,
+      total: history.values.length,
+      ranked,
+      counts: valueMap
+    };
+  }, [history.values]);
+
+  // ===== محاسبه تعداد هر بخش =====
   const counts = {
     moods: history.moods?.length || 0,
     news: history.news?.length || 0,
@@ -19,7 +62,7 @@ export default function HistoryTab({ history }) {
     values: history.values?.length || 0
   };
 
-  // فیلتر کردن بر اساس نوع
+  // ===== فیلتر کردن بر اساس نوع =====
   const getFilteredItems = () => {
     const allItems = [];
 
@@ -37,7 +80,7 @@ export default function HistoryTab({ history }) {
       });
     }
 
-    // اخبار (خوب/بد)
+    // اخبار
     if (activeFilter === 'all' || activeFilter === 'news') {
       history.news?.forEach(item => {
         if (item.good_news) {
@@ -121,13 +164,12 @@ export default function HistoryTab({ history }) {
       });
     }
 
-    // مرتب‌سازی بر اساس تاریخ (جدیدترین اول)
     return allItems.sort((a, b) => new Date(b.date) - new Date(a.date));
   };
 
   const filteredItems = getFilteredItems();
 
-  // تابع نمایش آیکون بر اساس نوع
+  // ===== تابع نمایش برچسب نوع =====
   const getTypeBadge = (type) => {
     const badges = {
       'mood': 'bg-rose-100 text-rose-700',
@@ -154,8 +196,94 @@ export default function HistoryTab({ history }) {
     return labels[type] || type;
   };
 
+  // ===== تابع نمایش ستاره برای ارزش‌ها =====
+  const renderStars = (score) => {
+    return '⭐'.repeat(score) + '☆'.repeat(5 - score);
+  };
+
   return (
     <div className="space-y-6">
+      {/* ===== بخش ارزش‌ها - میانگین و رتبه‌بندی ===== */}
+      {history.values && history.values.length > 0 && (
+        <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgba(79,70,229,0.06)] border border-indigo-50">
+          <h2 className="text-[#312E81] font-black text-lg mb-4 flex items-center gap-2">
+            <Compass size={20} className="text-teal-500" />
+            تحلیل ارزش‌ها
+          </h2>
+          
+          {/* میانگین کلی */}
+          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-2xl mb-4 border border-indigo-100">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold text-slate-500">میانگین کلی ارزش‌ها</p>
+                <p className="text-2xl font-black text-indigo-700">{valueStats.average} / ۵</p>
+              </div>
+              <div className="text-2xl">
+                {renderStars(Math.round(valueStats.average))}
+              </div>
+              <div className="text-xs font-bold text-slate-400">
+                {valueStats.total} ثبت شده
+              </div>
+            </div>
+          </div>
+
+          {/* رتبه‌بندی ارزش‌ها */}
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-slate-400 mb-2">رتبه‌بندی ارزش‌ها (بر اساس میانگین)</p>
+            
+            {valueStats.ranked.map((item, index) => {
+              const rankColors = [
+                'bg-amber-500 text-white',
+                'bg-slate-400 text-white',
+                'bg-amber-700 text-white',
+                'bg-indigo-100 text-indigo-700',
+                'bg-slate-100 text-slate-600'
+              ];
+              const rankIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+              
+              return (
+                <div key={item.name} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${rankColors[index] || 'bg-slate-100'}`}>
+                    {rankIcon}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-[#1E1B4B]">{item.name}</span>
+                      <span className="text-sm font-black text-indigo-600">{item.average} / ۵</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs">{renderStars(Math.round(item.average))}</span>
+                      <span className="text-[9px] font-bold text-slate-400">({item.count} بار ثبت)</span>
+                    </div>
+                    {/* نوار پیشرفت */}
+                    <div className="w-full h-1.5 bg-slate-200 rounded-full mt-1.5 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${(item.average / 5) * 100}%`,
+                          background: `linear-gradient(to right, #6366f1, #8b5cf6)`
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* جدول تعداد ثبت‌ها */}
+          <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {valueStats.ranked.map(item => (
+              <div key={item.name} className="text-center p-2 bg-slate-50 rounded-xl">
+                <p className="text-[8px] font-bold text-slate-400 truncate">{item.name}</p>
+                <p className="text-sm font-black text-indigo-600">{item.count} بار</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ===== لیست کامل تاریخچه ===== */}
       <div className="bg-white rounded-[32px] p-6 shadow-[0_8px_30px_rgba(79,70,229,0.06)] border border-indigo-50">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[#312E81] font-black text-lg flex items-center gap-2">
@@ -167,7 +295,7 @@ export default function HistoryTab({ history }) {
           </span>
         </div>
 
-        {/* فیلترها */}
+        {/* ===== فیلترها ===== */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setActiveFilter('all')}
@@ -241,7 +369,7 @@ export default function HistoryTab({ history }) {
           </button>
         </div>
 
-        {/* لیست آیتم‌ها */}
+        {/* ===== لیست آیتم‌ها ===== */}
         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
           {filteredItems.length > 0 ? (
             filteredItems.map((item, index) => (
@@ -250,12 +378,10 @@ export default function HistoryTab({ history }) {
                 className="p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-100 transition-all"
               >
                 <div className="flex items-start gap-3">
-                  {/* آیکون */}
                   <div className="text-2xl shrink-0 mt-0.5">
                     {item.icon}
                   </div>
                   
-                  {/* محتوا */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${getTypeBadge(item.type)}`}>
@@ -286,7 +412,7 @@ export default function HistoryTab({ history }) {
           )}
         </div>
 
-        {/* آمار کلی */}
+        {/* ===== آمار کلی ===== */}
         {filteredItems.length > 0 && (
           <div className="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
             <div className="text-center p-2 bg-rose-50 rounded-xl">
