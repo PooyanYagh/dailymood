@@ -6,44 +6,67 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-export default function ReportsTab({ stats, chartData, defaultChartData }) {
+export default function ReportsTab({ stats, chartData }) {
   const [chartDataState, setChartDataState] = useState([]);
 
-  // استفاده از داده‌های واقعی یا پیش‌فرض
   useEffect(() => {
+    // اگر داده‌های واقعی وجود دارد، از آن استفاده کن
     if (chartData && chartData.length > 0) {
       setChartDataState(chartData);
     } else {
-      setChartDataState(defaultChartData || getDefaultChartData());
+      // داده‌های پیش‌فرض بر اساس روزهای واقعی
+      setChartDataState(getDefaultChartData());
     }
   }, [chartData]);
 
-  // دیتای پیش‌فرض برای نمودار
+  // ===== تابع تولید داده‌های پیش‌فرض بر اساس روزهای واقعی =====
   const getDefaultChartData = () => {
     const today = new Date();
-    const days = [];
-    const weekDays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const data = [];
+    const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     
+    // ۷ روز گذشته (از دیروز به عقب)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const dayName = weekDays[d.getDay()];
-      days.push({
-        day: dayName,
-        score: 5 + Math.floor(Math.random() * 5), // مقدار پیش‌فرض تصادفی
-        date: d.toISOString().split('T')[0]
-      });
+      const dayIndex = d.getDay(); // 0=شنبه, 1=یکشنبه, ...
+      const dayName = days[dayIndex];
+      
+      // برای روزهای آینده (اگر امروز قبل از شنبه باشد)
+      if (i === 0) {
+        data.push({ 
+          day: 'امروز', 
+          score: 5,
+          date: d.toISOString().split('T')[0],
+          isToday: true
+        });
+      } else {
+        data.push({ 
+          day: dayName, 
+          score: 5,
+          date: d.toISOString().split('T')[0],
+          isToday: false
+        });
+      }
     }
-    return days;
+    return data;
   };
 
-  // تبدیل داده‌های چارت به فرمت مناسب
+  // ===== دریافت داده‌های نمودار =====
   const getChartData = () => {
     if (chartDataState && chartDataState.length > 0) {
-      return chartDataState;
+      // اطمینان از اینکه داده‌ها بر اساس تاریخ مرتب شده‌اند
+      return [...chartDataState].sort((a, b) => {
+        if (a.date && b.date) {
+          return new Date(a.date) - new Date(b.date);
+        }
+        return 0;
+      });
     }
-    return defaultChartData || getDefaultChartData();
+    return getDefaultChartData();
   };
+
+  const displayData = getChartData();
 
   return (
     <div className="space-y-6">
@@ -133,10 +156,10 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
         </div>
         
         {/* ===== نمودار ارتعاش و آرامش ===== */}
-        <h3 className="text-xs font-black text-slate-500 mb-4">نمودار ارتعاش و آرامش (هفته گذشته)</h3>
+        <h3 className="text-xs font-black text-slate-500 mb-4">نمودار ارتعاش و آرامش (۷ روز گذشته)</h3>
         <div className="h-48 w-full" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={getChartData()} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+            <LineChart data={displayData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
               <XAxis 
                 dataKey="day" 
                 tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 'bold' }} 
@@ -160,6 +183,7 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
                 }}
                 itemStyle={{ color: '#4F46E5', fontWeight: 'bold' }}
                 labelStyle={{ fontWeight: 'bold', color: '#1E1B4B' }}
+                formatter={(value) => [`${value} از ۱۰`, 'سطح ارتعاش']}
               />
               <Line 
                 type="monotone" 
@@ -173,9 +197,24 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        {getChartData().length === 0 && (
+        {displayData.length === 0 && (
           <p className="text-center text-xs text-slate-400 mt-2">هنوز داده‌ای برای نمایش وجود ندارد</p>
         )}
+        {/* نمایش روزهایی که داده دارند */}
+        <div className="flex flex-wrap justify-center gap-2 mt-3">
+          {displayData.map((item, index) => (
+            <div 
+              key={index} 
+              className={`text-[10px] px-2 py-1 rounded-full ${
+                item.score > 7 ? 'bg-emerald-100 text-emerald-700' :
+                item.score > 4 ? 'bg-amber-100 text-amber-700' :
+                'bg-rose-100 text-rose-700'
+              }`}
+            >
+              {item.day}: {item.score}/۱۰
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
