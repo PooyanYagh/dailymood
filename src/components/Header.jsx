@@ -1,3 +1,7 @@
+// src/components/Header.jsx
+import React from 'react';
+import { Sun } from 'lucide-react';
+
 export default function Header({ streakDays }) {
   return (
     <div className="bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] rounded-b-[40px] pt-12 pb-24 px-6 shadow-xl relative overflow-hidden">

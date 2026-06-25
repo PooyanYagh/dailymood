@@ -1,9 +1,6 @@
 // src/components/ReportsTab.jsx
 import React from 'react';
-import { 
-  Activity, Wind, Compass, CheckCircle2, Sparkles,
-  ThumbsUp, ThumbsDown
-} from 'lucide-react';
+import { Activity, Wind, Compass, CheckCircle2, Sparkles } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 export default function ReportsTab({ stats, chartData, defaultChartData }) {
@@ -49,16 +46,15 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
             </div>
           </div>
 
-          {/* آمار اخبار */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-emerald-50/50 rounded-2xl p-3 border border-emerald-100 text-center flex flex-col justify-center">
               <span className="text-lg mb-1">👍</span>
-              <p className="text-xl font-black text-emerald-700">{stats.newsCount.good}</p>
+              <p className="text-xl font-black text-emerald-700">{stats.newsCount?.good || 0}</p>
               <p className="text-[10px] font-bold text-emerald-600 mt-1">اتفاق خوب ثبت شده</p>
             </div>
             <div className="bg-rose-50/50 rounded-2xl p-3 border border-rose-100 text-center flex flex-col justify-center">
               <span className="text-lg mb-1">👎</span>
-              <p className="text-xl font-black text-rose-700">{stats.newsCount.bad}</p>
+              <p className="text-xl font-black text-rose-700">{stats.newsCount?.bad || 0}</p>
               <p className="text-[10px] font-bold text-rose-600 mt-1">چالش / اتفاق بد</p>
             </div>
             <div className="col-span-2 bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -77,8 +73,8 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           <div className="bg-cyan-50/50 rounded-2xl p-4 border border-cyan-100 flex flex-col justify-center items-center text-center">
             <Wind size={24} className="text-cyan-500 mb-2" />
-            <p className="text-lg font-black text-cyan-700" dir="ltr">{stats.meditation.totalHours} h</p>
-            <p className="text-[10px] font-bold text-cyan-600 mt-1">مدیتیشن در {stats.meditation.totalDays} روز</p>
+            <p className="text-lg font-black text-cyan-700" dir="ltr">{stats.meditation?.totalHours || 0} h</p>
+            <p className="text-[10px] font-bold text-cyan-600 mt-1">مدیتیشن در {stats.meditation?.totalDays || 0} روز</p>
           </div>
           
           <div className="bg-purple-50/50 rounded-2xl p-4 border border-purple-100 flex flex-col justify-center items-center text-center">
@@ -91,8 +87,8 @@ export default function ReportsTab({ stats, chartData, defaultChartData }) {
 
           <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-100 flex flex-col justify-center items-center text-center">
             <CheckCircle2 size={24} className="text-amber-500 mb-2" />
-            <p className="text-sm font-black text-amber-700">{stats.wishes.fulfilled} محقق شده</p>
-            <p className="text-[10px] font-bold text-amber-600 mt-1">و {stats.wishes.pending} در انتظار تجلی</p>
+            <p className="text-sm font-black text-amber-700">{stats.wishes?.fulfilled || 0} محقق شده</p>
+            <p className="text-[10px] font-bold text-amber-600 mt-1">و {stats.wishes?.pending || 0} در انتظار تجلی</p>
           </div>
         </div>
         

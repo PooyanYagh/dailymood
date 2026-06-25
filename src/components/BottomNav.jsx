@@ -1,3 +1,5 @@
+// src/components/BottomNav.jsx
+import React from 'react';
 import { Sun, BookOpen, Activity } from 'lucide-react';
 
 export default function BottomNav({ activeTab, setActiveTab }) {
